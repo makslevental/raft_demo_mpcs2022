@@ -10,9 +10,10 @@ class ResettableTimer:
         self.timer = Timer(self._interval(), self.function)
 
     def _interval(self):
-        return random.randint(*self.interval)
+        # in millis
+        return random.randint(*self.interval) / 1000
 
-    def run(self):
+    def start(self):
         self.timer.start()
 
     def reset(self):

@@ -4,10 +4,10 @@ from threading import Lock
 logging.basicConfig(
     format="%(levelname)s %(asctime)s %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S",
-    # comment out to get it to log to the screen
+    # uncomment to get file logging
     # filename="example.log",
-    # overwrites - comment out to get append
-    filemode="w",
+    # uncomment to get overwrite (of log file)
+    # filemode="w",
     level=logging.DEBUG,
 )
 
