@@ -1,56 +1,51 @@
+import json
+import sys
 import time
-from threading import Thread
-from typing import List
 
 import zmq
 
-SEND_RULE = {
-    '5555': '6666',
-    '6666': '7777',
-    '7777': '5555'
-}
+config_json = json.load(open("config.json"))
+id = int(sys.argv[1])
 
+my_ip, my_port = None, None
+peers = []
+for i, address in enumerate(config_json["addresses"]):
+    ip, port = address["ip"], str(address["port"])
+    if i == id:
+        my_ip, my_port = ip, port
+    else:
+        peers.append((ip, port))
 
-def worker(socket_port: str, peer_ports: List[str]):
-    context = zmq.Context()
+context = zmq.Context()
 
-    receiving_socket = context.socket(zmq.ROUTER)
-    receiving_socket.setsockopt(zmq.IDENTITY, socket_port.encode())
-    receiving_socket.bind(f'tcp://*:{socket_port}')
+receiving_socket = context.socket(zmq.ROUTER)
+receiving_socket.setsockopt(zmq.IDENTITY, my_port.encode())
+receiving_socket.bind(f"tcp://{my_ip}:{my_port}")
 
-    sending_socket = context.socket(zmq.ROUTER)
-    sending_socket.setsockopt(zmq.IDENTITY, socket_port.encode())
+sending_socket = context.socket(zmq.ROUTER)
+sending_socket.setsockopt(zmq.IDENTITY, my_port.encode())
 
-    for peer_port in peer_ports:
-        sending_socket.connect(f'tcp://localhost:{peer_port}')
+for ip, port in peers:
+    sending_socket.connect(f"tcp://{ip}:{port}")
 
-    time.sleep(1)
+time.sleep(1)
 
-    recipient_id = SEND_RULE[socket_port].encode()
-    message_for_recipient = b'coucou!'
+for ip, port in peers:
+    message_for_recipient = b"coucou!"
+    print(my_port, " sending a message to ", port)
+    sending_socket.send_multipart([port.encode(), message_for_recipient])
 
-    print(socket_port, ' sending a message to ', recipient_id.decode())
-    sending_socket.send_multipart([recipient_id, message_for_recipient])
-
+while True:
     # Receive a message from peer
     sender_id, sender_message = receiving_socket.recv_multipart()
 
-    print(socket_port,
-          ' server received: ',
-          sender_message.decode(),
-          ' from: ',
-          sender_id.decode()
-          )
+    print(
+        my_port,
+        " server received: ",
+        sender_message.decode(),
+        " from: ",
+        sender_id.decode(),
+    )
 
-
-if __name__ == '__main__':
-    socket_ports = ['5555', '6666', '7777']
-    for socket_port in socket_ports:
-        Thread(target=worker,
-               args=(socket_port,
-                     [port for port in socket_ports
-                      if port != socket_ports]
-                     )
-               ).start()
-
-    time.sleep(3)
+    if sender_message.decode() != "got your message":
+        sending_socket.send_multipart([sender_id, "got your message".encode()])
