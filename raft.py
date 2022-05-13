@@ -57,7 +57,7 @@ class Node:
         debug_print("received rpc", rpc_message)
 
     def run_election(self):
-        self.election_timer.start()
+        self.election_timer.reset()
         if self.role == Role.Leader:
             return
 
